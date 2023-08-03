@@ -12,7 +12,25 @@ class Menu:
         self.descriptions = self.google_sheets_api.get_descriptions()
         self.category_button_names = self.google_sheets_api.get_menu_category_button_names()
         self.common_data = self.google_sheets_api.get_common_data()
+        self.images_with_keys = self.get_all_images_with_keys()
 
+    def get_all_images_with_keys(self):
+        keys_and_image_ids = {}
+        for row in self.common_data:
+            key = row[0]
+            image_id = row[2]
+            if key != '' and key != None and image_id != '' and image_id != None:
+                keys_and_image_ids[key] = image_id
+
+        keys_and_images = {}
+        for key, image_id in keys_and_image_ids.items():
+            image = self.google_drive_service.get_file_by_id(image_id)
+            keys_and_images[key] = image
+
+        return keys_and_images
+
+    def get_image_by_key(self, key):
+        return self.images_with_keys[key]
     def get_all_category_names(self):
         category_names = []
         for category in self.category_button_names:
@@ -87,19 +105,19 @@ class Menu:
                 return description
         return None
 
-    def get_price_and_image_id_by_key(self, key):
+    def get_price_and_image_by_key(self, key):
         for row in self.common_data:
             if row[0] == key:
                 price = row[1]
-                image_id = row[2]
-                return price, image_id
+                image = row[2]
+                return price, image
         return None, None
 
     def get_data_by_key_and_language(self, key, language):
         result_data = []
         title = self.get_title_by_key_and_language(key, language)
         description = self.get_description_by_key_and_language(key, language)
-        price, image_id = self.get_price_and_image_id_by_key(key)
+        price, image = self.get_price_and_image_by_key(key)
 
         if title and description and price:
             data = {
@@ -107,7 +125,7 @@ class Menu:
                 'title': title,
                 'description': description,
                 'price': price,
-                'image_id': image_id
+                'image': image
             }
             result_data.append(data)
 
@@ -131,9 +149,8 @@ class Menu:
                 message_text = f'<b>{item["title"]}</b>\n'
                 message_text += f'{item["description"]}\n'
                 message_text += f'<b>{item["price"]}</b>\n'
-                image_id = item["image_id"]
-                if image_id != '' and image_id != None:
-                    image_file = self.google_drive_service.get_file_by_id(image_id)
+                image_file = item["image"]
+                if image_file != '' and image_file != None:
                     dish_data = {
                         'text': message_text,
                         'image': image_file
